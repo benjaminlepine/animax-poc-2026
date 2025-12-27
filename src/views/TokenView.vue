@@ -34,7 +34,9 @@ async function load() {
     loading.value = false
   }
 }
-
+function onAddToCollection() {
+  console.log('add_to_collection_clicked', { tokenId: props.tokenId })
+}
 onMounted(load)
 </script>
 
@@ -62,6 +64,13 @@ onMounted(load)
     <p><strong>Environments:</strong> {{ animal.environments.join(', ') }}</p>
 
     <p class="about">{{ animal.about }}</p>
+
+
+    <button class="cta" type="button" @click="onAddToCollection">
+      Ajouter à ma collection
+    </button>
+
+
   </div>
 
   <div v-else-if="error" class="state">{{ error }}</div>
@@ -91,4 +100,17 @@ onMounted(load)
   margin: 40px auto;
   font-family: system-ui, sans-serif;
 }
+
+.cta {
+  width: 100%;
+  max-width: 420px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+
 </style>
