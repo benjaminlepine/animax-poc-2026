@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import type { Animal } from '@/domain/animal'
-import { getMockAnimalById } from '@/mocks/animals.mock'
-import { getStorage, ref as storageRef, getDownloadURL } from 'firebase/storage'
-import { app } from '@/firebase'
-
-const storage = getStorage(app)
-const USE_MOCK = true
+import { fetchAnimalForToken, fetchAnimalImageUrl } from '@/services/animalService'
 
 const props = defineProps<{ tokenId: string }>()
 
@@ -15,51 +10,34 @@ const imageUrl = ref<string | null>(null)
 const animal = ref<Animal | null>(null)
 const error = ref<string | null>(null)
 
-onMounted(async () => {
+async function load() {
   loading.value = true
   error.value = null
   animal.value = null
   imageUrl.value = null
 
   try {
-    const rawTokenId = String(props.tokenId || '')
-    const tokenId = decodeURIComponent(rawTokenId)
+    const tokenId = decodeURIComponent(String(props.tokenId || ''))
+    const res = await fetchAnimalForToken(tokenId)
 
-    if (USE_MOCK) {
-      // POC mapping: for now we ignore tokenId and always show animal 40
-      // You can later do: const mockAnimalId = tokenId || '40'
-      const animalKey = '1'
-      const mockAnimalId = '40'
-      const mock = getMockAnimalById(mockAnimalId)
-
-      if (!mock) {
-        error.value = 'Mock animal not found'
-        return
-      }
-
-      animal.value = mock
-      try {
-
-        const path = `Animax/${animalKey}/main.webp`
-        imageUrl.value = await getDownloadURL(storageRef(storage, path))
-      } catch (e) {
-        console.warn('Image not available', e)
-        imageUrl.value = null
-      }
-
+    if (!res) {
+      error.value = 'Animal not found'
       return
     }
 
-    // Firebase mode later (kept out for cooldown)
-    error.value = 'Firebase disabled (mock mode off)'
+    animal.value = res.animal
+    imageUrl.value = await fetchAnimalImageUrl(res.animalKey)
   } catch (e) {
     console.error(e)
     error.value = 'Unexpected error'
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(load)
 </script>
+
 
 <template>
   <div v-if="animal" class="animal">
