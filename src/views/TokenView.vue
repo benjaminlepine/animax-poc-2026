@@ -3,8 +3,11 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '@/firebase'
+import { getStorage, ref as storageRef, getDownloadURL } from 'firebase/storage'
 
+let didFetch = false
 const route = useRoute()
+const imageUrl = ref(null)
 
 const animal = ref(null)
 const error = ref(null)
@@ -16,6 +19,15 @@ function extractAnimalId(value) {
 }
 
 onMounted(async () => {
+
+  console.count('TokenView mounted')
+
+  if (didFetch) return
+  didFetch = true
+
+  console.count('Firestore token getDoc')
+
+
   try {
     const tokenId = route.params.tokenId
     const tokenSnap = await getDoc(doc(db, 'tokens', tokenId))
@@ -27,12 +39,24 @@ onMounted(async () => {
 
     const tokenData = tokenSnap.data()
     const animalId = extractAnimalId(tokenData.animax)
+    try {
+      const storage = getStorage()
+      const path = `Animax/${animalId}/main.webp`
+
+      console.count('getDownloadURL')
+      imageUrl.value = await getDownloadURL(storageRef(storage, path))
+    } catch (e) {
+      // pas bloquant : si pas d'image ou règles storage => on continue sans image
+      console.warn('Image not available for this animal', e)
+      imageUrl.value = null
+    }
+
 
     if (!animalId) {
       error.value = 'Animal ref missing in token'
       return
     }
-
+    console.count('Firestore animal getDoc')
     const animalSnap = await getDoc(doc(db, 'animals', animalId))
 
     if (!animalSnap.exists()) {
@@ -50,6 +74,15 @@ onMounted(async () => {
 
 <template>
   <div v-if="animal" class="animal">
+
+    <img
+        v-if="imageUrl"
+        :src="imageUrl"
+        :alt="animal.name"
+        class="animal-img"
+    />
+
+
     <h1>{{ animal.name }}</h1>
     <h2><em>{{ animal.scientificName }}</em></h2>
 
@@ -86,5 +119,14 @@ onMounted(async () => {
   margin-top: 24px;
   line-height: 1.6;
 }
+
+.animal-img {
+  width: 100%;
+  max-width: 420px;
+  display: block;
+  margin: 0 0 20px 0;
+  border-radius: 12px;
+}
+
 </style>
 
